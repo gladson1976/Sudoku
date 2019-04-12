@@ -1,0 +1,260 @@
+<div class="burst-12" *ngIf="newHighscore" (click)="this.newHighscore = false"></div>
+<div class="sudoku-title title-border">
+  <table class="sudoku-title">
+    <tr>
+      <td class="sudoku-title">
+        <span (click)="showDebug()">{{title}}</span>
+      </td>
+      <td class="sudoku-title">
+        <span class="fa fa-refresh title-button cursor-pointer" (click)="newSudoku()"></span>
+        <span class="fa fa-info title-button cursor-pointer" (click)="showHint()">
+          <span class="sudoku-font sudoku-hint-counter" [ngClass]="{'flash-hint': flashHint.x !== null}">{{helpCounter}}</span>
+        </span>
+        <span class="fa fa-gears title-button cursor-pointer" (click)="showSettings()"></span>
+        <span class="fa fa-bar-chart title-button cursor-pointer" (click)="showHighscore()"></span>
+        <span class="fa fa-question title-button cursor-pointer" (click)="showHelp()"></span>
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="sudoku-title">
+  <table class="sudoku-title">
+    <tr>
+      <td class="sudoku-message">
+        <span>{{sudokuMessage}}</span>
+      </td>
+      <td class="sudoku-message text-left">
+        <span class="fa" [ngClass]="{'fa-pause': pauseTimer, 'fa-clock-o': !pauseTimer}" (click)="toggleTimer()"></span>
+        <span class="sudoku-timer float-right">
+          <span *ngIf="displayTimer.displayHours > 0 && displayTimer.displayHours !== '-'">{{displayTimer.displayHours}}:</span><span>{{displayTimer.displayMinutes}}:</span><span>{{displayTimer.displaySeconds}}</span>
+        </span>
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="sudoku-container">
+  <table class="sudoku-container">
+    <tr *ngFor="let row of arrGrid; let i = index;">
+      <td *ngFor="let col of row; let j = index;" class="sudoku" [style.width]="display.sudokuCellSize" [style.height]="display.sudokuCellSize"
+        [ngClass]="{'static-cell': col.isStatic, 'sudoku-highlight': isHighlight && (i === highlightNexus.x || j === highlightNexus.y),
+          'flash-hint': i === flashHint.x && j === flashHint.y,
+          'sudoku-hint-error': persistData.showErrors && arrGrid[i][j].sudokuValue !== arrDisplayGrid[i][j].sudokuValue, 'pause-sudoku': pauseTimer}">
+
+        <div class="sudoku-text" (click)="setSudokuNumber(i, j)" [ngClass]="{'dim-sudoku': isHintActive && !col.isStatic}" [style.width]="display.sudokuCellSize"
+          [style.height]="display.sudokuCellSize" [style.line-height]="display.sudokuCellSize">{{arrDisplayGrid[i][j].sudokuValue === 0 ? '' : arrDisplayGrid[i][j].sudokuValue}}</div>
+
+        <div class="sudoku-hint" (click)="setSudokuNumber(i, j)" [ngClass]="{'dim-sudoku': !isHintActive}" *ngFor="let d of dummyArray(9).fill(); let x = index"
+          [style.width]="display.sudokuHintSize" [style.height]="display.sudokuHintSize">{{arrDisplayGrid[i][j].hintValues[x]}}</div>
+
+      </td>
+    </tr>
+  </table>
+</div>
+<div class="sudoku-footer">
+  <table class="sudoku-footer">
+    <tr>
+      <td class="sudoku-palette" [ngClass]="{'selected-sudoku': selectedNumber === (i+1)}" *ngFor="let d of dummyArray(9).fill(''); let i = index;"
+        [style.width]="display.sudokuKeySize" [style.height]="display.sudokuKeySize" [style.line-height]="display.sudokuKeySize" (click)="selectNumber(i+1)">
+        {{i+1}}
+      </td>
+    </tr>
+  </table>
+  <table class="sudoku-markers">
+    <tr>
+      <td class="sudoku-palette fa fa-plus table-cell" [ngClass]="{'selected-sudoku': isHighlight}" [style.width]="display.sudokuKeySize"
+        [style.height]="display.sudokuKeySize" [style.line-height]="display.sudokuKeySize" (click)="toggleHighlight()"></td>
+      <td class="sudoku-palette fa fa-eraser table-cell" [ngClass]="{'selected-sudoku': selectedNumber === 0}" [style.width]="display.sudokuKeySize"
+        [style.height]="display.sudokuKeySize" [style.line-height]="display.sudokuKeySize" (click)="selectNumber(0)"></td>
+      <td class="sudoku-palette fa fa-pencil table-cell" [ngClass]="{'selected-sudoku': isHintActive}" [style.width]="display.sudokuKeySize"
+        [style.height]="display.sudokuKeySize" [style.line-height]="display.sudokuKeySize" (click)="toggleHintInput()"></td>
+      <!-- <td class="sudoku-palette table-cell" [style.width]="display.sudokuKeySize" [style.height]="display.sudokuKeySize">
+        <span class="fa fa-hand-pointer-o fa-rotate-180 animate-up-down"></span>
+      </td> -->
+    </tr>
+  </table>
+</div>
+
+<ng-template #popupSettings let-c="close" let-d="dismiss">
+  <div class="modal-header">
+    <h4 class="modal-title">{{title}} - Options</h4>
+    <button type="button" class="close" aria-label="Close" (click)="d('Cross click')">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <table class="settings-table">
+      <tr>
+        <td>Difficulty</td>
+        <td class="text-right">
+          <div ngbDropdown class="d-inline-block" placement="bottom-right">
+            <button type="button" class="btn btn-sm btn-white" id="gridDropdown" ngbDropdownToggle>
+              <span>{{arrDifficulty[selectedDifficulty].difficultyName}}</span>
+            </button>
+            <div ngbDropdownMenu aria-labelledby="gridDropdown">
+              <div class="dropdown-item" href="#" *ngFor="let difficulty of arrDifficulty; let i = index" (click)="setDifficulty(i)">
+                <span class="sudoku-font text-left cursor-pointer" (click)="setDifficulty(i)">{{difficulty.difficultyName}}</span>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+      <!-- <tr>
+        <td>Show Highlight</td>
+        <td class="text-right va-middle">
+          <input type="checkbox" name="showHighlight" id="showHighlight" [(ngModel)]="persistData.showHighlight" [value]="true" (change)="setPersistData()">
+        </td>
+      </tr> -->
+      <tr>
+        <td>Timed Game</td>
+        <td class="text-right va-middle">
+          <input type="checkbox" name="timedGame" id="timedGame" [(ngModel)]="persistData.timedGame" [value]="true" (change)="setPersistData()">
+        </td>
+      </tr>
+      <tr>
+        <td>Show Errors</td>
+        <td class="text-right va-middle">
+          <input type="checkbox" name="showErrors" id="showErrors" [(ngModel)]="persistData.showErrors" [value]="true" (change)="setPersistData()">
+        </td>
+      </tr>
+    </table>
+  </div>
+</ng-template>
+
+<ng-template #popupConfirm let-c="close" let-d="dismiss">
+  <div class="modal-header">
+    <h4 class="modal-title">{{title}}</h4>
+    <button type="button" class="close" aria-label="Close" (click)="d('Cross click')">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div *ngFor="let message of sudokuPopupMessage">{{message}}</div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-primary" (click)="c('Y')">Yes</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="d('N')">No</button>
+  </div>
+</ng-template>
+
+<ng-template #popupHighscore let-c="close" let-d="dismiss">
+  <div class="modal-header">
+    <h4 class="modal-title">{{title}} - Stats</h4>
+    <button type="button" class="close" aria-label="Close" (click)="d('Cross click')">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <table class="settings-table">
+      <tr class="text-center font-bold">
+        <td class="text-left">Difficulty</td>
+        <td>Best Time</td>
+        <td>Won</td>
+        <td>Played</td>
+      </tr>
+      <tr class="text-center" *ngFor="let highscore of arrDifficulty; let i = index">
+        <td class="text-left">{{highscore.difficultyName}}</td>
+        <td class="text-center">{{convertTime(persistData.sudokuStats.time[i])}}</td>
+        <td class="text-center">{{persistData.sudokuStats.won[i]}}</td>
+        <td class="text-center">{{persistData.sudokuStats.played[i]}}</td>
+      </tr>
+      <tr class="text-center">
+        <td class="text-left">Untimed</td>
+        <td class="text-center">--:--</td>
+        <td class="text-center">{{persistData.sudokuStats.won[3]}}</td>
+        <td class="text-center">{{persistData.sudokuStats.played[3]}}</td>
+      </tr>
+      <tr>
+        <td colspan="4" class="text-right p-top-10">
+          <button type="button" class="btn btn-outline-danger" (click)="resetStats()">Reset Stats</button>
+        </td>
+      </tr>
+    </table>
+  </div>
+</ng-template>
+
+<ng-template #popupHelp let-c="close" let-d="dismiss">
+  <div class="modal-header">
+    <h4 class="modal-title">{{title}} - Info</h4>
+    <button type="button" class="close" aria-label="Close" (click)="d('Cross click')">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <table class="settings-table">
+      <tr>
+        <td>
+          <div class="font-bold">Sudoku v{{sudokuVersion}}</div>
+          <div>Developed by</div>
+          <div>Prabhu Thomas</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <!-- <div class="font-bold">Objective and Instructions</div> -->
+          <div class="sudoku-help">
+            <ul class="list-unstyled">
+              <li class="font-bold sudoku-help-title">Objective and Instructions</li>
+              <li>The game of Sudoku consists of a grid of nine rows and nine columns subdivided into nine 3x3 subgrids.</li>
+              <li>It has two basic rules -</li>
+              <li>
+                1. Fill each column, each row, and each box (3x3 subgrid) with the numbers 1 to 9.
+                <ol type="a" style="margin-left: -6vw;">
+                  <li>Each row (9 squares) should have all the numbers 1 to 9</li>
+                  <li>Each column (9 squares) should have all the numbers 1 to 9</li>
+                  <li>Each box (3x3 - 9 squares) should have all the numbers 1 to 9</li>
+                </ol>
+              </li>
+              <li>2. No column, row or box can have two squares with the same number.</li>
+              <li>&nbsp;</li>
+              <li class="font-bold sudoku-help-title">Gameplay</li>
+              <li>There are three difficulty levels (Easy, Normal and Hard) depending on the number of initial static squares.</li>
+              <li>Select a number from the numbers in the bottom row. Click on any square in the grid to fill in the selected
+                number in the square.</li>
+              <li>Any existing number in the square will be overwritten. Clicking on a square with the same number will remove
+                the number.</li>
+              <li>If you are not sure of a square, the possible numbers in the square can be marked by clicking the
+                <span class="fa fa-pencil inline"></span> icon.</li>
+              <li>The
+                <span class="fa fa-eraser inline"></span> icon can be used to erase the numbers from the squares that you click.</li>
+              <li>Clicking the
+                <span class="fa fa-plus inline"></span> icon will highlight the row and column of the square you click.</li>
+              <li>If you are stuck, you can use a clue by clicking the <span class="fa fa-info inline"></span> at the top. You get 5 clues for Easy, 3 for Normal and 1 for Hard levels.</li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</ng-template>
+
+<ng-template #popupDebug let-c="close" let-d="dismiss">
+  <div class="modal-header">
+    <h4 class="modal-title">{{title}} - Debug</h4>
+    <button type="button" class="close" aria-label="Close" (click)="d('Cross click')">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <table class="settings-table">
+      <tr>
+        <td>
+          <div class="font-bold">Sudoku v{{sudokuVersion}}</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="sudoku-help">
+            <ul class="list-unstyled">
+              <li>Screen Width - {{VW2PX(100)}}</li>
+              <li>Grid Width - {{VW2PX(96)}}</li>
+              <li>sudokuCellSize - {{display.sudokuCellSize}}</li>
+              <li>sudokuHintSize - {{display.sudokuHintSize}}</li>
+              <li>sudokuKeySize - {{display.sudokuKeySize}}</li>
+              <li>highlightNexus - {{highlightNexus.x}}, {{highlightNexus.y}}</li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</ng-template>
